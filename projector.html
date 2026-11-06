@@ -4,27 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NACIN QR Attendance</title>
-    <!-- Lightweight QR Code Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #f3f4f6;
-        }
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 { color: #1f2937; margin-bottom: 20px; }
+        body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f3f4f6; }
+        .container { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; }
+        h1 { color: #1f2937; margin-bottom: 20px; font-size: 24px;}
+        select { font-size: 18px; padding: 10px; margin-bottom: 30px; border-radius: 6px; border: 1px solid #ccc; width: 100%; cursor: pointer; }
         #qrcode { margin: 0 auto; display: flex; justify-content: center; }
         #timer-text { font-size: 1.2rem; color: #4b5563; margin-top: 20px; }
         #timer { font-size: 2.5rem; color: #ef4444; font-weight: bold; }
@@ -32,7 +17,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>Scan to Mark Attendance</h1>
+        <h1>Select Session & Display QR</h1>
+        
+        <!-- Instructor selects the session here -->
+        <select id="sessionSelect" onchange="generateToken()">
+            <option value="Morning">Morning Session</option>
+            <option value="Afternoon">Afternoon Session</option>
+        </select>
+
         <div id="qrcode"></div>
         <div id="timer-text">QR code refreshes in:</div>
         <div id="timer">30</div>
@@ -41,49 +33,38 @@
     <script>
         // --- CONFIGURATION ---
         // REPLACE this with your actual GitHub Pages URL for index.html
-        const studentFormUrl = "https://nacinshillong.github.io/attendance/index.html";
-        
-        // This must exactly match the SECRET_KEY in your Google Apps Script
+        const studentFormUrl = "https://YOUR_GITHUB_USERNAME.github.io/nacin-attendance/index.html";
         const secretKey = "NACIN_SECRET_KEY"; 
-        const bucketSize = 30000; // 30 seconds
+        const bucketSize = 30000; 
         // ---------------------
 
         let qrcode = new QRCode(document.getElementById("qrcode"), { 
-            width: 300, 
-            height: 300,
-            colorDark : "#000000",
-            colorLight : "#ffffff",
-            correctLevel : QRCode.CorrectLevel.H
+            width: 300, height: 300, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
         });
 
         function generateToken() {
             const timeBucket = Math.floor(Date.now() / bucketSize);
-            const rawToken = secretKey + "_" + timeBucket;
+            const token = btoa(secretKey + "_" + timeBucket); 
             
-            // Encode to match Apps Script's Utilities.base64Encode
-            const token = btoa(rawToken); 
-            const fullUrl = `${studentFormUrl}?token=${token}`;
+            // Grab the selected session from the dropdown
+            const sessionName = document.getElementById("sessionSelect").value;
+            
+            // Add BOTH the time token and the session to the URL
+            const fullUrl = `${studentFormUrl}?token=${token}&session=${sessionName}`;
             
             qrcode.clear();
             qrcode.makeCode(fullUrl);
-            console.log("Generated URL:", fullUrl); // Useful for debugging
         }
 
         function updateLoop() {
             const now = Date.now();
             const timeRemaining = bucketSize - (now % bucketSize);
-            
             document.getElementById("timer").innerText = Math.ceil(timeRemaining / 1000);
 
-            // Generate new QR right when the bucket rolls over
-            if (timeRemaining > bucketSize - 1000) {
-                generateToken();
-            }
-            
+            if (timeRemaining > bucketSize - 1000) generateToken();
             requestAnimationFrame(updateLoop);
         }
 
-        // Start the loop
         generateToken();
         updateLoop();
     </script>
